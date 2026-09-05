@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "R00-T01",
+      "order": 1,
+      "title": "Bootstrap and initialize dogfood",
+      "source": "docs/REMEDIATION_PLAN.md#r00-t01-bootstrap-and-initialize-dogfood",
+      "depends_on": [],
+      "verify": [
+        "go test ./...",
+        "go vet ./...",
+        "go build ./cmd/amnesia"
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "R01-T01",
+      "order": 2,
+      "title": "Prevent init from seeding progressed states",
+      "source": "docs/REMEDIATION_PLAN.md#r01-t01-prevent-init-from-seeding-progressed-states",
+      "depends_on": [
+        "R00-T01"
+      ],
+      "verify": [
+        "go test ./internal/graph/... ./internal/cli/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "R01-T02",
+      "order": 3,
+      "title": "Reject impossible installed dependency state and empty graphs",
+      "source": "docs/REMEDIATION_PLAN.md#r01-t02-reject-impossible-installed-dependency-state-and-empty-graphs",
+      "depends_on": [
+        "R01-T01"
+      ],
+      "verify": [
+        "go test ./internal/graph/... ./internal/cli/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "R02-T01",
+      "order": 4,
+      "title": "Make canonical SKILL.md valid and document two install paths",
+      "source": "docs/REMEDIATION_PLAN.md#r02-t01-make-canonical-skillmd-valid-and-document-two-install-paths",
+      "depends_on": [
+        "R00-T01"
+      ],
+      "verify": [
+        "go test ./..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "R03-T01",
+      "order": 5,
+      "title": "Reduce root AGENTS.md to a small execution guide",
+      "source": "docs/REMEDIATION_PLAN.md#r03-t01-reduce-root-agentsmd-to-a-small-execution-guide",
+      "depends_on": [
+        "R00-T01"
+      ],
+      "verify": [
+        "go test ./..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "R04-T01",
+      "order": 6,
+      "title": "Add end-to-end tests for repaired temporal invariants",
+      "source": "docs/REMEDIATION_PLAN.md#r04-t01-add-end-to-end-tests-for-the-repaired-temporal-invariants",
+      "depends_on": [
+        "R01-T02"
+      ],
+      "verify": [
+        "go test ./..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "R05-T01",
+      "order": 7,
+      "title": "Recover this remediation from AmnesiaGraph state",
+      "source": "docs/REMEDIATION_PLAN.md#r05-t01-recover-this-remediation-from-amnesiagraph-state",
+      "depends_on": [
+        "R02-T01",
+        "R03-T01",
+        "R04-T01"
+      ],
+      "verify": [
+        "go run ./cmd/amnesia validate",
+        "go test ./..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "R06-T01",
+      "order": 8,
+      "title": "Complete self-hosted remediation and verify terminal state",
+      "source": "docs/REMEDIATION_PLAN.md#r06-t01-complete-self-hosted-remediation-and-verify-terminal-state",
+      "depends_on": [
+        "R05-T01"
+      ],
+      "verify": [
+        "go test ./...",
+        "go vet ./...",
+        "go build ./cmd/amnesia",
+        "go run ./cmd/amnesia validate"
+      ],
+      "status": "done",
+      "blocker": null
+    }
+  ]
+}

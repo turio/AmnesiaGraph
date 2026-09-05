@@ -134,7 +134,7 @@ func initGraph(root, cwd, inputPath string, out, errOut io.Writer) int {
 	}
 
 	current = graph.NormalizeInput(current)
-	if err := graph.Validate(current, root); err != nil {
+	if err := graph.ValidateForInit(current, root); err != nil {
 		return printError(errOut, err)
 	}
 	if err := store.Save(root, current); err != nil {

@@ -67,3 +67,17 @@ amnesia done T002
 ```
 
 Use the generic procedure in [`skills/amnesiagraph/SKILL.md`](skills/amnesiagraph/SKILL.md) with any shell-capable coding agent. The examples under [`skills/amnesiagraph/examples/`](skills/amnesiagraph/examples/) show custom, ID-less, multi-source, Spec Kit-style, and OpenSpec-style normalization inputs; they are examples, not dedicated adapters.
+
+### Install the canonical skill
+
+The repository contains one canonical skill source; it is not automatically discovered merely because it is checked in. Copy that same directory into the user skill storage for the harness you use:
+
+```text
+# Codex user skills
+cp -R skills/amnesiagraph ~/.codex/skills/amnesiagraph
+
+# Claude Code user skills
+cp -R skills/amnesiagraph ~/.claude/skills/amnesiagraph
+```
+
+On Windows, use the corresponding user skill directories and `Copy-Item -Recurse`. Keep the source body in `skills/amnesiagraph/SKILL.md`; do not maintain a second harness-specific copy.

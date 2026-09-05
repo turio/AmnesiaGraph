@@ -46,6 +46,85 @@ func TestValidateStructuralRules(t *testing.T) {
 	}
 }
 
+func TestValidateForInitRequiresPendingTasksWithoutBlockers(t *testing.T) {
+	root := t.TempDir()
+	writeSource(t, root, "plan.md")
+	for _, test := range []struct {
+		name   string
+		status Status
+		block  *string
+		valid  bool
+	}{
+		{name: "explicit pending", status: Pending, valid: true},
+		{name: "active", status: Active},
+		{name: "blocked with reason", status: Blocked, block: stringPtr("waiting")},
+		{name: "done", status: Done},
+		{name: "pending with blocker", status: Pending, block: stringPtr("unexpected")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			current := Graph{Version: Version, Tasks: []Task{{
+				ID: "T001", Order: 1, Title: "Task", Source: "plan.md#task", DependsOn: []string{}, Verify: []string{}, Status: test.status, Blocker: test.block,
+			}}}
+			err := ValidateForInit(current, root)
+			if (err == nil) != test.valid {
+				t.Fatalf("got %v, want valid=%v", err, test.valid)
+			}
+		})
+	}
+}
+
+func TestValidateRejectsEmptyAndImpossibleProgressedDependencyState(t *testing.T) {
+	root := t.TempDir()
+	writeSource(t, root, "plan.md")
+
+	tests := []struct {
+		name       string
+		parent     Status
+		child      Status
+		childBlock *string
+		empty      bool
+		valid      bool
+	}{
+		{name: "parent pending child active", parent: Pending, child: Active},
+		{name: "parent pending child blocked", parent: Pending, child: Blocked, childBlock: stringPtr("waiting")},
+		{name: "parent pending child done", parent: Pending, child: Done},
+		{name: "parent active child done", parent: Active, child: Done},
+		{name: "parent blocked child done", parent: Blocked, child: Done},
+		{name: "parent done child active", parent: Done, child: Active, valid: true},
+		{name: "parent done child blocked", parent: Done, child: Blocked, childBlock: stringPtr("waiting"), valid: true},
+		{name: "parent done child done", parent: Done, child: Done, valid: true},
+		{name: "empty graph", empty: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			current := Graph{Version: Version}
+			if !test.empty {
+				current.Tasks = []Task{
+					{ID: "P", Order: 1, Title: "Parent", Source: "plan.md#parent", DependsOn: []string{}, Verify: []string{}, Status: test.parent, Blocker: blockerFor(test.parent)},
+					{ID: "C", Order: 2, Title: "Child", Source: "plan.md#child", DependsOn: []string{"P"}, Verify: []string{}, Status: test.child, Blocker: test.childBlock},
+				}
+			} else {
+				current.Tasks = []Task{}
+			}
+			err := Validate(current, root)
+			if (err == nil) != test.valid {
+				t.Fatalf("got %v, want valid=%v", err, test.valid)
+			}
+			if !test.valid && !strings.Contains(err.Error(), "graph must contain at least one task") && !strings.Contains(err.Error(), "incomplete dependency") {
+				t.Fatalf("error is not actionable: %v", err)
+			}
+		})
+	}
+}
+
+func blockerFor(status Status) *string {
+	if status != Blocked {
+		return nil
+	}
+	return stringPtr("waiting")
+}
+
 func TestValidateSupportsMultipleSourceFilesAndBranchedDAG(t *testing.T) {
 	root := t.TempDir()
 	writeSource(t, root, "plan.md")

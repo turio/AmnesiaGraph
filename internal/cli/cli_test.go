@@ -22,13 +22,19 @@ func TestEndToEndWorkflowAndHotResume(t *testing.T) {
 		{ID: "T002", Order: 2, Title: "Active middle", Source: "docs/IMPLEMENTATION_PLAN.md#t002", DependsOn: []string{"T001"}, Verify: []string{"echo verification"}},
 		{ID: "T003", Order: 3, Title: "Next step", Source: "docs/IMPLEMENTATION_PLAN.md#t003", DependsOn: []string{"T002"}, Verify: []string{}},
 		{ID: "T004", Order: 4, Title: "Unrelated pending", Source: "docs/IMPLEMENTATION_PLAN.md#t004", DependsOn: []string{"T005"}, Verify: []string{}},
-		{ID: "T005", Order: 5, Title: "Blocked fixture", Source: "docs/IMPLEMENTATION_PLAN.md#t005", DependsOn: []string{}, Verify: []string{}, Status: graph.Blocked, Blocker: stringPtr("waiting for fixture")},
+		{ID: "T005", Order: 5, Title: "Blocked fixture", Source: "docs/IMPLEMENTATION_PLAN.md#t005", DependsOn: []string{}, Verify: []string{}},
 	}}
 	input := writeInput(t, root, current)
 
 	stdout, stderr, code := run(t, root, "init", input)
 	if code != 0 || !strings.Contains(stdout, "INITIALIZED") || stderr != "" {
 		t.Fatalf("init: code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, stderr, code = run(t, root, "start", "T005"); code != 0 || stderr != "" {
+		t.Fatalf("start blockable fixture: code=%d stderr=%q", code, stderr)
+	}
+	if _, stderr, code = run(t, root, "block", "T005", "waiting", "for", "fixture"); code != 0 || stderr != "" {
+		t.Fatalf("block fixture: code=%d stderr=%q", code, stderr)
 	}
 	stdout, stderr, code = run(t, root, "ready")
 	if code != 0 || stdout != "T001  Foundation\n" || stderr != "" {
@@ -154,17 +160,141 @@ func TestFailedInitLeavesExistingGraphUnchanged(t *testing.T) {
 	}
 }
 
+func TestInitRejectsProgressedSeedStatesAndAllowsPendingDefaults(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		status     graph.Status
+		blocker    *string
+		verify     []string
+		wantResult bool
+	}{
+		{name: "omitted status", wantResult: true},
+		{name: "explicit pending", status: graph.Pending, wantResult: true},
+		{name: "active", status: graph.Active},
+		{name: "blocked with reason", status: graph.Blocked, blocker: stringPtr("waiting")},
+		{name: "done without verification", status: graph.Done},
+		{name: "done with verification", status: graph.Done, verify: []string{"echo should-not-run"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := newGitRepo(t)
+			writeFile(t, root, "plan.md", "plan")
+			current := graph.Graph{Version: graph.Version, Tasks: []graph.Task{{
+				ID: "T001", Order: 1, Title: "Task", Source: "plan.md#task", DependsOn: []string{}, Verify: test.verify, Status: test.status, Blocker: test.blocker,
+			}}}
+			input := writeInput(t, root, current)
+			_, stderr, code := run(t, root, "init", input)
+			if test.wantResult {
+				if code != 0 || stderr != "" {
+					t.Fatalf("init failed: code=%d stderr=%q", code, stderr)
+				}
+				loaded, err := store.Load(root)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if loaded.Tasks[0].Status != graph.Pending || loaded.Tasks[0].Blocker != nil {
+					t.Fatalf("unexpected initialized state: %+v", loaded.Tasks[0])
+				}
+				return
+			}
+			if code == 0 || !strings.Contains(stderr, "init requires pending status") {
+				t.Fatalf("progressed seed accepted: code=%d stderr=%q", code, stderr)
+			}
+			if _, err := os.Stat(store.GraphPath(root)); !os.IsNotExist(err) {
+				t.Fatalf("rejected init installed state, stat error: %v", err)
+			}
+		})
+	}
+}
+
+func TestInitRejectsEmptyGraph(t *testing.T) {
+	root := newGitRepo(t)
+	input := writeInput(t, root, graph.Graph{Version: graph.Version, Tasks: []graph.Task{}})
+	_, stderr, code := run(t, root, "init", input)
+	if code == 0 || !strings.Contains(stderr, "graph must contain at least one task") {
+		t.Fatalf("empty init accepted: code=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(store.GraphPath(root)); !os.IsNotExist(err) {
+		t.Fatalf("empty init installed state, stat error: %v", err)
+	}
+}
+
+func TestValidateRejectsCorruptedProgressedDependencyState(t *testing.T) {
+	root := newGitRepo(t)
+	writeFile(t, root, "plan.md", "plan")
+	current := graph.Graph{Version: graph.Version, Tasks: []graph.Task{
+		{ID: "P", Order: 1, Title: "Parent", Source: "plan.md#parent", DependsOn: []string{}, Verify: []string{}},
+		{ID: "C", Order: 2, Title: "Child", Source: "plan.md#child", DependsOn: []string{"P"}, Verify: []string{}},
+	}}
+	input := writeInput(t, root, current)
+	if _, stderr, code := run(t, root, "init", input); code != 0 || stderr != "" {
+		t.Fatalf("valid init: code=%d stderr=%q", code, stderr)
+	}
+	installed, err := store.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed.Tasks[1].Status = graph.Done
+	corrupted, err := json.MarshalIndent(installed, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(store.GraphPath(root), corrupted, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, code := run(t, root, "validate")
+	if code == 0 || !strings.Contains(stderr, "task C has incomplete dependency P (pending)") {
+		t.Fatalf("corrupted state accepted: code=%d stderr=%q", code, stderr)
+	}
+}
+
+func TestRejectedProgressedReinitPreservesInstalledGraph(t *testing.T) {
+	root := newGitRepo(t)
+	writeFile(t, root, "plan.md", "plan")
+	valid := graph.Graph{Version: graph.Version, Tasks: []graph.Task{{
+		ID: "T001", Order: 1, Title: "Valid", Source: "plan.md#valid", DependsOn: []string{}, Verify: []string{},
+	}}}
+	validInput := writeInput(t, root, valid)
+	if _, stderr, code := run(t, root, "init", validInput); code != 0 || stderr != "" {
+		t.Fatalf("valid init: code=%d stderr=%q", code, stderr)
+	}
+	before, err := os.ReadFile(store.GraphPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	progressed := graph.Graph{Version: graph.Version, Tasks: []graph.Task{{
+		ID: "T001", Order: 1, Title: "Invalid replacement", Source: "plan.md#invalid", DependsOn: []string{}, Verify: []string{}, Status: graph.Done,
+	}}}
+	progressedInput := writeInput(t, root, progressed)
+	_, stderr, code := run(t, root, "init", progressedInput)
+	if code == 0 || !strings.Contains(stderr, "init requires pending status") {
+		t.Fatalf("invalid replacement: code=%d stderr=%q", code, stderr)
+	}
+	after, err := os.ReadFile(store.GraphPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("rejected progressed init changed installed graph")
+	}
+}
+
 func TestMultipleReadyAndActiveTasksAreAllowed(t *testing.T) {
 	root := newGitRepo(t)
 	writeFile(t, root, "plan.md", "plan")
 	current := graph.Graph{Version: graph.Version, Tasks: []graph.Task{
-		{ID: "T001", Order: 1, Title: "Done root", Source: "plan.md#one", Status: graph.Done},
+		{ID: "T001", Order: 1, Title: "Root", Source: "plan.md#one"},
 		{ID: "T002", Order: 2, Title: "Branch A", Source: "plan.md#two", DependsOn: []string{"T001"}},
 		{ID: "T003", Order: 3, Title: "Branch B", Source: "plan.md#three", DependsOn: []string{"T001"}},
 	}}
 	input := writeInput(t, root, current)
 	if _, stderr, code := run(t, root, "init", input); code != 0 || stderr != "" {
 		t.Fatalf("init: code=%d stderr=%q", code, stderr)
+	}
+	if _, stderr, code := run(t, root, "start", "T001"); code != 0 || stderr != "" {
+		t.Fatalf("start root: code=%d stderr=%q", code, stderr)
+	}
+	if _, stderr, code := run(t, root, "done", "T001"); code != 0 || stderr != "" {
+		t.Fatalf("done root: code=%d stderr=%q", code, stderr)
 	}
 	stdout, _, code := run(t, root, "ready")
 	if code != 0 || stdout != "T002  Branch A\nT003  Branch B\n" {

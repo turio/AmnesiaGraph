@@ -28,6 +28,9 @@ func Validate(g Graph, repoRoot string) error {
 	if g.Version != Version {
 		return invalidf("unsupported version: %d", g.Version)
 	}
+	if len(g.Tasks) == 0 {
+		return invalidf("graph must contain at least one task")
+	}
 
 	root, err := filepath.Abs(filepath.Clean(repoRoot))
 	if err != nil {
@@ -92,9 +95,37 @@ func Validate(g Graph, repoRoot string) error {
 			}
 		}
 	}
+	for _, task := range g.Tasks {
+		if task.Status == Pending {
+			continue
+		}
+		for _, dependencyID := range task.DependsOn {
+			dependency := byID[dependencyID]
+			if dependency.Status != Done {
+				return invalidf("task %s has incomplete dependency %s (%s)", task.ID, dependency.ID, dependency.Status)
+			}
+		}
+	}
 
 	if err := detectCycle(g.Tasks, byID); err != nil {
 		return err
+	}
+	return nil
+}
+
+// ValidateForInit validates a normalized graph and enforces the rule that a
+// new execution run cannot bypass runtime transitions or verification.
+func ValidateForInit(g Graph, repoRoot string) error {
+	if err := Validate(g, repoRoot); err != nil {
+		return err
+	}
+	for _, task := range g.Tasks {
+		if task.Status != Pending {
+			return invalidf("task %s: init requires pending status, got %s", task.ID, task.Status)
+		}
+		if task.Blocker != nil {
+			return invalidf("task %s: init cannot include a blocker reason", task.ID)
+		}
 	}
 	return nil
 }

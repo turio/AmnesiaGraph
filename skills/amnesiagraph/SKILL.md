@@ -1,3 +1,8 @@
+---
+name: amnesiagraph
+description: Maintain a tiny repo-local execution graph beneath an existing implementation plan, and recover dependency-aware coding work after context loss.
+---
+
 # AmnesiaGraph
 
 Use AmnesiaGraph only underneath an existing, proper implementation plan. The plan may be custom Markdown, Spec Kit, OpenSpec, or another planning format; AmnesiaGraph does not invent requirements or architecture.

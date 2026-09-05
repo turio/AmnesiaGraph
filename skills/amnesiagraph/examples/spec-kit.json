@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "1.1",
+      "order": 1,
+      "title": "Implement the Spec Kit task",
+      "source": "skills/amnesiagraph/examples/sources/spec-kit/tasks.md#1-1",
+      "depends_on": [],
+      "verify": []
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "T001",
+      "order": 1,
+      "title": "Create the data shape",
+      "source": "skills/amnesiagraph/examples/sources/custom-without-ids.md#step-1",
+      "depends_on": [],
+      "verify": []
+    },
+    {
+      "id": "T002",
+      "order": 2,
+      "title": "Implement the data flow",
+      "source": "skills/amnesiagraph/examples/sources/custom-without-ids.md#step-2",
+      "depends_on": ["T001"],
+      "verify": []
+    }
+  ]
+}

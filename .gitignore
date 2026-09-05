@@ -1,0 +1,4 @@
+# Local Go build artifacts.
+/amnesia
+/amnesia.exe
+/bin/

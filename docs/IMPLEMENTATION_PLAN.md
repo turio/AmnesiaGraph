@@ -743,11 +743,11 @@ Agents implementing this repository should update these checkboxes as work compl
 
 ### P00-T01 — Initialize minimal Go project
 
-- [ ] Create `go.mod` for `github.com/turio/AmnesiaGraph`.
-- [ ] Create `cmd/amnesia/main.go`.
-- [ ] Implement only enough command dispatch to support `help` and `version` placeholders while later tasks fill behavior.
-- [ ] Use the Go standard library only.
-- [ ] Add `.gitignore` entries for local build artifacts only; do not automatically ignore `.amnesiagraph/` because projects may choose whether to commit execution state.
+- [x] Create `go.mod` for `github.com/turio/AmnesiaGraph`.
+- [x] Create `cmd/amnesia/main.go`.
+- [x] Implement only enough command dispatch to support `help` and `version` placeholders while later tasks fill behavior.
+- [x] Use the Go standard library only.
+- [x] Add `.gitignore` entries for local build artifacts only; do not automatically ignore `.amnesiagraph/` because projects may choose whether to commit execution state.
 
 **Acceptance:**
 
@@ -764,8 +764,8 @@ both succeed.
 
 ### P00-T02 — Add minimal CI
 
-- [ ] Add one GitHub Actions workflow for supported Go setup, `go test ./...`, and `go vet ./...`.
-- [ ] Do not add release automation, coverage services, linters, code-quality SaaS, or matrix complexity in V1.
+- [x] Add one GitHub Actions workflow for supported Go setup, `go test ./...`, and `go vet ./...`.
+- [x] Do not add release automation, coverage services, linters, code-quality SaaS, or matrix complexity in V1.
 
 **Acceptance:** workflow syntax is valid and local commands pass.
 
@@ -777,10 +777,10 @@ both succeed.
 
 ### P01-T01 — Resolve repository root deterministically
 
-- [ ] Implement repository-root lookup via `git rev-parse --show-toplevel`.
-- [ ] Normalize the returned path.
-- [ ] Return a typed/simple internal error when outside Git.
-- [ ] Do not implement home-directory fallback, recently-used repository lookup, or parent-project discovery beyond Git's own root result.
+- [x] Implement repository-root lookup via `git rev-parse --show-toplevel`.
+- [x] Normalize the returned path.
+- [x] Return a typed/simple internal error when outside Git.
+- [x] Do not implement home-directory fallback, recently-used repository lookup, or parent-project discovery beyond Git's own root result.
 
 **Tests:**
 
@@ -794,11 +794,11 @@ both succeed.
 
 ### P01-T02 — Implement repo-local graph store
 
-- [ ] Define `.amnesiagraph/graph.json` as the only persistent V1 state path.
-- [ ] Implement load/save helpers rooted only at the resolved Git root.
-- [ ] Create `.amnesiagraph/` during successful initialization.
-- [ ] Save through temp-file + atomic rename.
-- [ ] Do not implement file locking, database transactions, daemon state, or global state.
+- [x] Define `.amnesiagraph/graph.json` as the only persistent V1 state path.
+- [x] Implement load/save helpers rooted only at the resolved Git root.
+- [x] Create `.amnesiagraph/` during successful initialization.
+- [x] Save through temp-file + atomic rename.
+- [x] Do not implement file locking, database transactions, daemon state, or global state.
 
 **Tests:**
 
@@ -814,11 +814,11 @@ both succeed.
 
 ### P02-T01 — Define graph/task structs
 
-- [ ] Add graph version.
-- [ ] Add task fields: `id`, `order`, `title`, `source`, `depends_on`, `verify`, `status`, `blocker`.
-- [ ] Define exact allowed states: pending, active, blocked, done.
-- [ ] Keep JSON stable and human-readable.
-- [ ] Do not add fields outside the fixed V1 model.
+- [x] Add graph version.
+- [x] Add task fields: `id`, `order`, `title`, `source`, `depends_on`, `verify`, `status`, `blocker`.
+- [x] Define exact allowed states: pending, active, blocked, done.
+- [x] Keep JSON stable and human-readable.
+- [x] Do not add fields outside the fixed V1 model.
 
 **Depends on:** P01-T02.
 
@@ -826,15 +826,15 @@ both succeed.
 
 ### P02-T02 — Implement structural validation
 
-- [ ] Validate version.
-- [ ] Validate unique non-empty IDs.
-- [ ] Validate unique orders.
-- [ ] Validate non-empty titles and sources.
-- [ ] Validate dependency references and reject self-dependencies.
-- [ ] Validate status/blocker consistency.
-- [ ] Validate non-empty verification command strings.
-- [ ] Validate source path is relative, stays inside current repo, and points to an existing file.
-- [ ] Support many different source files in one graph.
+- [x] Validate version.
+- [x] Validate unique non-empty IDs.
+- [x] Validate unique orders.
+- [x] Validate non-empty titles and sources.
+- [x] Validate dependency references and reject self-dependencies.
+- [x] Validate status/blocker consistency.
+- [x] Validate non-empty verification command strings.
+- [x] Validate source path is relative, stays inside current repo, and points to an existing file.
+- [x] Support many different source files in one graph.
 
 **Depends on:** P02-T01.
 
@@ -842,10 +842,10 @@ both succeed.
 
 ### P02-T03 — Implement dependency cycle detection
 
-- [ ] Detect any cycle in `depends_on` relationships with a small in-house standard algorithm.
-- [ ] Return an actionable cycle error.
-- [ ] Add branched-DAG and cycle test fixtures.
-- [ ] Do not add a graph library.
+- [x] Detect any cycle in `depends_on` relationships with a small in-house standard algorithm.
+- [x] Return an actionable cycle error.
+- [x] Add branched-DAG and cycle test fixtures.
+- [x] Do not add a graph library.
 
 **Depends on:** P02-T02.
 
@@ -853,12 +853,12 @@ both succeed.
 
 ### P02-T04 — Implement `init` and `validate`
 
-- [ ] `amnesia init <normalized-graph.json>` reads an agent-produced normalized graph input.
-- [ ] Initialization sets omitted task statuses to `pending` and blockers to `null`.
-- [ ] Validate completely before installing repo state.
-- [ ] Never copy source-plan text into installed state.
-- [ ] `amnesia validate` validates the installed graph using the same validator.
-- [ ] Failed init must leave any existing installed graph unchanged.
+- [x] `amnesia init <normalized-graph.json>` reads an agent-produced normalized graph input.
+- [x] Initialization sets omitted task statuses to `pending` and blockers to `null`.
+- [x] Validate completely before installing repo state.
+- [x] Never copy source-plan text into installed state.
+- [x] `amnesia validate` validates the installed graph using the same validator.
+- [x] Failed init must leave any existing installed graph unchanged.
 
 **Acceptance:** malformed graphs fail; valid graphs install and round-trip.
 
@@ -870,10 +870,10 @@ both succeed.
 
 ### P03-T01 — Implement deterministic ready calculation
 
-- [ ] A task is ready iff it is pending and every dependency is done.
-- [ ] Sort ready tasks by `order` ascending.
-- [ ] Add tests for roots, chains, forks, joins, blocked tasks, and multiple simultaneously ready tasks.
-- [ ] Do not rank or prioritize ready tasks beyond original plan order.
+- [x] A task is ready iff it is pending and every dependency is done.
+- [x] Sort ready tasks by `order` ascending.
+- [x] Add tests for roots, chains, forks, joins, blocked tasks, and multiple simultaneously ready tasks.
+- [x] Do not rank or prioritize ready tasks beyond original plan order.
 
 **Depends on:** P02-T04.
 
@@ -881,12 +881,12 @@ both succeed.
 
 ### P03-T02 — Implement `start`
 
-- [ ] Add `amnesia start <id>`.
-- [ ] Allow `pending -> active` when all dependencies are done.
-- [ ] Allow `blocked -> active` when all dependencies are done and clear blocker reason.
-- [ ] Reject unknown IDs and invalid source states.
-- [ ] Reject start when any dependency is not done and print only the relevant dependency blockers.
-- [ ] Do not enforce one-active-task semantics.
+- [x] Add `amnesia start <id>`.
+- [x] Allow `pending -> active` when all dependencies are done.
+- [x] Allow `blocked -> active` when all dependencies are done and clear blocker reason.
+- [x] Reject unknown IDs and invalid source states.
+- [x] Reject start when any dependency is not done and print only the relevant dependency blockers.
+- [x] Do not enforce one-active-task semantics.
 
 **Tests:** explicitly prove that two independent ready tasks may both be active because AmnesiaGraph does not own harness/model scheduling policy.
 
@@ -896,11 +896,11 @@ both succeed.
 
 ### P03-T03 — Implement `block`
 
-- [ ] Add `amnesia block <id> <reason>`.
-- [ ] Allow only `active -> blocked`.
-- [ ] Require non-empty reason.
-- [ ] Persist only the short reason.
-- [ ] Do not implement retry policy or automatic resolution.
+- [x] Add `amnesia block <id> <reason>`.
+- [x] Allow only `active -> blocked`.
+- [x] Require non-empty reason.
+- [x] Persist only the short reason.
+- [x] Do not implement retry policy or automatic resolution.
 
 **Depends on:** P03-T02.
 
@@ -910,13 +910,13 @@ both succeed.
 
 ### P04-T01 — Implement verification runner
 
-- [ ] Execute verification strings from the Git root.
-- [ ] POSIX uses `/bin/sh -c`.
-- [ ] Windows uses `cmd.exe /C`.
-- [ ] Execute in declared order.
-- [ ] Stop on first non-zero exit.
-- [ ] Return compact structured internal success/failure information.
-- [ ] Do not persist stdout/stderr in the graph.
+- [x] Execute verification strings from the Git root.
+- [x] POSIX uses `/bin/sh -c`.
+- [x] Windows uses `cmd.exe /C`.
+- [x] Execute in declared order.
+- [x] Stop on first non-zero exit.
+- [x] Return compact structured internal success/failure information.
+- [x] Do not persist stdout/stderr in the graph.
 
 **Tests:** passing command, failing command, ordered multiple commands, execution working directory.
 
@@ -926,14 +926,14 @@ both succeed.
 
 ### P04-T02 — Implement `done`
 
-- [ ] Add `amnesia done <id>`.
-- [ ] Allow only `active -> done`.
-- [ ] Re-check dependency completion.
-- [ ] If `verify` is empty, complete immediately.
-- [ ] If `verify` is non-empty, run every verification command before changing state.
-- [ ] Failed verification leaves status `active`.
-- [ ] Successful verification changes status to `done` atomically.
-- [ ] Print concise pass/fail output.
+- [x] Add `amnesia done <id>`.
+- [x] Allow only `active -> done`.
+- [x] Re-check dependency completion.
+- [x] If `verify` is empty, complete immediately.
+- [x] If `verify` is non-empty, run every verification command before changing state.
+- [x] Failed verification leaves status `active`.
+- [x] Successful verification changes status to `done` atomically.
+- [x] Print concise pass/fail output.
 
 **Tests:** no-verification completion, successful verified completion, failed verification state preservation, invalid transition rejection.
 
@@ -945,11 +945,11 @@ both succeed.
 
 ### P05-T01 — Implement `ready` CLI output
 
-- [ ] Add `amnesia ready`.
-- [ ] Print only deterministic ready tasks.
-- [ ] Include task ID and short title.
-- [ ] Preserve `order` sorting.
-- [ ] Do not print full descriptions, the full graph, or source-plan content.
+- [x] Add `amnesia ready`.
+- [x] Print only deterministic ready tasks.
+- [x] Include task ID and short title.
+- [x] Preserve `order` sorting.
+- [x] Do not print full descriptions, the full graph, or source-plan content.
 
 **Depends on:** P03-T01.
 
@@ -957,14 +957,14 @@ both succeed.
 
 ### P05-T02 — Implement hot-subgraph projection
 
-- [ ] Build a projection function that derives only immediately relevant state from the installed graph.
-- [ ] Include active tasks.
-- [ ] Include each active task's immediate dependencies and statuses.
-- [ ] Include direct downstream dependents of active tasks.
-- [ ] Include deterministic ready tasks.
-- [ ] Include explicitly blocked tasks with short reasons.
-- [ ] Include source pointers and verification commands for active tasks.
-- [ ] Do not include unrelated completed/pending tasks by default.
+- [x] Build a projection function that derives only immediately relevant state from the installed graph.
+- [x] Include active tasks.
+- [x] Include each active task's immediate dependencies and statuses.
+- [x] Include direct downstream dependents of active tasks.
+- [x] Include deterministic ready tasks.
+- [x] Include explicitly blocked tasks with short reasons.
+- [x] Include source pointers and verification commands for active tasks.
+- [x] Do not include unrelated completed/pending tasks by default.
 
 **Depends on:** P04-T02, P05-T01.
 
@@ -972,12 +972,12 @@ both succeed.
 
 ### P05-T03 — Implement `resume`
 
-- [ ] Add `amnesia resume` as the primary recovery command.
-- [ ] Render the hot-subgraph projection compactly.
-- [ ] Support zero, one, or multiple active tasks without imposing scheduling policy.
-- [ ] If there is no active task, foreground currently ready work.
-- [ ] Explicitly label each active task's `source` as the location of the **full original plan instructions**.
-- [ ] Do not read and print the source-plan body.
+- [x] Add `amnesia resume` as the primary recovery command.
+- [x] Render the hot-subgraph projection compactly.
+- [x] Support zero, one, or multiple active tasks without imposing scheduling policy.
+- [x] If there is no active task, foreground currently ready work.
+- [x] Explicitly label each active task's `source` as the location of the **full original plan instructions**.
+- [x] Do not read and print the source-plan body.
 
 **Tests:**
 
@@ -997,18 +997,18 @@ both succeed.
 
 ### P06-T01 — Write harness-neutral `SKILL.md`
 
-- [ ] Create `skills/amnesiagraph/SKILL.md`.
-- [ ] Keep it concise.
-- [ ] Require a proper implementation plan before use.
-- [ ] Explain normalization from arbitrary plan sources.
-- [ ] Preserve existing IDs or generate deterministic IDs when absent.
-- [ ] Tell the agent to decompose coarse existing planned work into executable numbered steps when necessary.
-- [ ] Tell the agent to keep full instructions in the original plan and use graph `source` pointers to retrieve them.
-- [ ] Teach `resume`, `ready`, `start`, `block`, and `done` workflow.
-- [ ] Explicitly tell the agent not to use state from another repository.
-- [ ] Do not mention a required Codex/Claude-native todo tool.
-- [ ] Do not require hooks, MCP, or harness-specific APIs.
-- [ ] Do not create discovered-work nodes.
+- [x] Create `skills/amnesiagraph/SKILL.md`.
+- [x] Keep it concise.
+- [x] Require a proper implementation plan before use.
+- [x] Explain normalization from arbitrary plan sources.
+- [x] Preserve existing IDs or generate deterministic IDs when absent.
+- [x] Tell the agent to decompose coarse existing planned work into executable numbered steps when necessary.
+- [x] Tell the agent to keep full instructions in the original plan and use graph `source` pointers to retrieve them.
+- [x] Teach `resume`, `ready`, `start`, `block`, and `done` workflow.
+- [x] Explicitly tell the agent not to use state from another repository.
+- [x] Do not mention a required Codex/Claude-native todo tool.
+- [x] Do not require hooks, MCP, or harness-specific APIs.
+- [x] Do not create discovered-work nodes.
 
 **Depends on:** P05-T03.
 
@@ -1018,11 +1018,11 @@ both succeed.
 
 Add a small set of documentation/test fixtures demonstrating that the same graph contract can represent:
 
-- [ ] a custom Markdown plan that already has task IDs;
-- [ ] a custom Markdown plan without IDs, normalized to `T001...`;
-- [ ] a plan whose tasks point to multiple source files;
-- [ ] a Spec Kit-style task source;
-- [ ] an OpenSpec-style task source.
+- [x] a custom Markdown plan that already has task IDs;
+- [x] a custom Markdown plan without IDs, normalized to `T001...`;
+- [x] a plan whose tasks point to multiple source files;
+- [x] a Spec Kit-style task source;
+- [x] an OpenSpec-style task source.
 
 These are examples of input shape, not dedicated parsers.
 
@@ -1036,11 +1036,11 @@ Do not implement Spec Kit/OpenSpec adapters in V1.
 
 ### P07-T01 — Repo-isolation end-to-end test
 
-- [ ] Create two temporary Git repositories.
-- [ ] Initialize independent AmnesiaGraph DAGs.
-- [ ] Start/complete different tasks in each.
-- [ ] Verify `resume`, `ready`, and state mutations always use only the repo containing the command's working directory.
-- [ ] Verify execution outside Git cannot access either repo's state.
+- [x] Create two temporary Git repositories.
+- [x] Initialize independent AmnesiaGraph DAGs.
+- [x] Start/complete different tasks in each.
+- [x] Verify `resume`, `ready`, and state mutations always use only the repo containing the command's working directory.
+- [x] Verify execution outside Git cannot access either repo's state.
 
 **Depends on:** P05-T03.
 
@@ -1057,8 +1057,8 @@ Simulate the intended product behavior without involving an actual LLM:
 5. Run `amnesia resume` from the repo.
 6. Verify it reconstructs the correct active task(s), dependencies, source pointer(s), next/ready work, blockers, and verification commands solely from repo-local state.
 
-- [ ] Assert no source-plan body is included.
-- [ ] Assert unrelated graph nodes are not included.
+- [x] Assert no source-plan body is included.
+- [x] Assert unrelated graph nodes are not included.
 
 **Depends on:** P07-T01.
 
@@ -1077,9 +1077,9 @@ active  -> done     allowed if verification passes
 
 Everything else is rejected.
 
-- [ ] Include dependency-incomplete cases.
-- [ ] Include verification-failure cases.
-- [ ] Include multiple-active-task case and verify it is not rejected merely because another task is active.
+- [x] Include dependency-incomplete cases.
+- [x] Include verification-failure cases.
+- [x] Include multiple-active-task case and verify it is not rejected merely because another task is active.
 
 **Depends on:** P04-T02.
 
@@ -1087,10 +1087,10 @@ Everything else is rejected.
 
 ### P07-T04 — Full V1 test gate
 
-- [ ] `go test ./...`
-- [ ] `go vet ./...`
-- [ ] `go build ./cmd/amnesia`
-- [ ] run a manual CLI smoke test in a temporary Git repo using a fixture plan.
+- [x] `go test ./...`
+- [x] `go vet ./...`
+- [x] `go build ./cmd/amnesia`
+- [x] run a manual CLI smoke test in a temporary Git repo using a fixture plan.
 
 **Depends on:** P07-T02, P07-T03.
 
@@ -1106,16 +1106,16 @@ The README should explain the product in one screen before deeper usage details:
 
 Document:
 
-- [ ] why it exists;
-- [ ] what it does not do;
-- [ ] installation with `go install`;
-- [ ] proper-plan prerequisite;
-- [ ] normalization concept;
-- [ ] the seven V1 commands;
-- [ ] repo-local state path;
-- [ ] source pointers back to full original plan instructions;
-- [ ] one minimal end-to-end example;
-- [ ] how to install/use the generic skill with a shell-capable coding agent.
+- [x] why it exists;
+- [x] what it does not do;
+- [x] installation with `go install`;
+- [x] proper-plan prerequisite;
+- [x] normalization concept;
+- [x] the seven V1 commands;
+- [x] repo-local state path;
+- [x] source pointers back to full original plan instructions;
+- [x] one minimal end-to-end example;
+- [x] how to install/use the generic skill with a shell-capable coding agent.
 
 Do not turn the README into general agent-framework documentation.
 
@@ -1125,9 +1125,9 @@ Do not turn the README into general agent-framework documentation.
 
 ### P08-T02 — Document architecture and non-goals
 
-- [ ] Keep this implementation plan as the detailed architecture record.
-- [ ] Add only minimal extra docs if README clarity requires them.
-- [ ] Explicitly state that AmnesiaGraph is not Beads/Ergo-style issue management, not an orchestrator, not agent memory, not a graph database, and not a replacement for Spec Kit/OpenSpec/custom plans.
+- [x] Keep this implementation plan as the detailed architecture record.
+- [x] Add only minimal extra docs if README clarity requires them.
+- [x] Explicitly state that AmnesiaGraph is not Beads/Ergo-style issue management, not an orchestrator, not agent memory, not a graph database, and not a replacement for Spec Kit/OpenSpec/custom plans.
 
 **Depends on:** P08-T01.
 
@@ -1209,24 +1209,24 @@ It must not persist or print the entire refund-flow plan section.
 
 AmnesiaGraph V1 is complete only when all of the following are true:
 
-- [ ] proper-plan prerequisite and normalization workflow are documented in the generic skill;
-- [ ] arbitrary plan sources can be represented through the same minimal normalized graph contract;
-- [ ] missing source task IDs can be supplied by agent normalization without modifying the source plan;
-- [ ] all execution state is repo-gated under `.amnesiagraph/`;
-- [ ] repo A can never be read as fallback state while operating in repo B;
-- [ ] graph initialization rejects invalid references and cycles;
-- [ ] `ready` is deterministic and dependency-based;
-- [ ] `start` enforces dependency completion but does not enforce one-active-task policy;
-- [ ] `block` persists only a short blocker reason;
-- [ ] `done` enforces defined executable verification;
-- [ ] failed verification leaves the task active;
-- [ ] `resume` reconstructs the hot execution neighborhood from a fresh process;
-- [ ] `resume` points agents to the original plan for full instructions rather than copying plan content;
-- [ ] unrelated graph nodes are omitted from default resume output;
-- [ ] no global/cross-repo memory exists;
-- [ ] no MCP, graph database, issue tracker, orchestrator, dynamic discovered-work system, or harness-specific core is present;
-- [ ] `go test ./...`, `go vet ./...`, and `go build ./cmd/amnesia` pass;
-- [ ] README explains the product and usage concisely.
+- [x] proper-plan prerequisite and normalization workflow are documented in the generic skill;
+- [x] arbitrary plan sources can be represented through the same minimal normalized graph contract;
+- [x] missing source task IDs can be supplied by agent normalization without modifying the source plan;
+- [x] all execution state is repo-gated under `.amnesiagraph/`;
+- [x] repo A can never be read as fallback state while operating in repo B;
+- [x] graph initialization rejects invalid references and cycles;
+- [x] `ready` is deterministic and dependency-based;
+- [x] `start` enforces dependency completion but does not enforce one-active-task policy;
+- [x] `block` persists only a short blocker reason;
+- [x] `done` enforces defined executable verification;
+- [x] failed verification leaves the task active;
+- [x] `resume` reconstructs the hot execution neighborhood from a fresh process;
+- [x] `resume` points agents to the original plan for full instructions rather than copying plan content;
+- [x] unrelated graph nodes are omitted from default resume output;
+- [x] no global/cross-repo memory exists;
+- [x] no MCP, graph database, issue tracker, orchestrator, dynamic discovered-work system, or harness-specific core is present;
+- [x] `go test ./...`, `go vet ./...`, and `go build ./cmd/amnesia` pass;
+- [x] README explains the product and usage concisely.
 
 ---
 

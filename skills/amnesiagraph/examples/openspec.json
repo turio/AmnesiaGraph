@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "CHANGE-01",
+      "order": 1,
+      "title": "Implement the OpenSpec change",
+      "source": "skills/amnesiagraph/examples/sources/openspec/changes/example/tasks.md#implementation",
+      "depends_on": [],
+      "verify": []
+    }
+  ]
+}

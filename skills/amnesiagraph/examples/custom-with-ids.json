@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "AUTH-01",
+      "order": 1,
+      "title": "Define authentication boundary",
+      "source": "skills/amnesiagraph/examples/sources/custom-plan.md#auth-01",
+      "depends_on": [],
+      "verify": []
+    },
+    {
+      "id": "AUTH-02",
+      "order": 2,
+      "title": "Add token validation",
+      "source": "skills/amnesiagraph/examples/sources/custom-plan.md#auth-02",
+      "depends_on": ["AUTH-01"],
+      "verify": []
+    }
+  ]
+}

@@ -1,8 +1,28 @@
 # AmnesiaGraph
 
-AmnesiaGraph is a tiny repo-local execution graph for long-running coding agents. Your existing implementation plan stays authoritative; AmnesiaGraph remembers only enough execution state to resume correctly after context loss.
+**A durable execution context graph for coding agents.**
 
-It is deliberately not Beads/Ergo-style issue management, a project-management system, a graph database, agent memory, an orchestrator, or a web UI. It does not replace Spec Kit, OpenSpec, or a good custom implementation plan.
+Coding agents can lose track of execution state when context is compacted, a session ends, or work is handed off. AmnesiaGraph keeps the minimum useful state outside the model context so the agent can resume correctly without rereading an entire implementation plan.
+
+It stores a small repo-local graph of:
+
+- task IDs and dependencies;
+- `pending`, `active`, `blocked`, and `done` state;
+- deterministic ready work;
+- short blocker reasons;
+- verification commands required before completion;
+- pointers back to the original plan for full instructions.
+
+`amnesia resume` reconstructs only the current execution neighborhood: what is active, what it depends on, what is ready or blocked, what comes next, how completion is verified, and where to read the full task instructions. The original Spec Kit, OpenSpec, Markdown, or other implementation plan remains authoritative; AmnesiaGraph does not copy the whole plan into agent context.
+
+## How it differs
+
+- **Codex `update_plan` / Claude todo tools** — lightweight working todo lists; AmnesiaGraph adds durable repo-local dependency, blocker, readiness, and verification state across context loss.
+- **Ergo** — a lightweight agent backlog/task graph; AmnesiaGraph is a smaller execution-state overlay beneath an existing authoritative plan rather than the plan itself.
+- **Beads** — a broader issue/dependency and multi-agent work-management system; AmnesiaGraph deliberately keeps only the execution context needed to resume coding work.
+- **Spec Kit / OpenSpec** — create and organize implementation plans/specs; AmnesiaGraph tracks execution of those plans instead of replacing them.
+
+AmnesiaGraph is deliberately not a project-management system, graph database, general agent memory, orchestrator, or web UI.
 
 ## Install
 

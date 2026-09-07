@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "NGR00-T01",
+      "order": 1,
+      "title": "Run baseline and encode the failing behavior first",
+      "source": "docs/NAMED_GRAPHS_REMEDIATION_PLAN.md#NGR00-T01",
+      "depends_on": [],
+      "verify": [
+        "go test ./...",
+        "go vet ./...",
+        "go build ./cmd/amnesia"
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "NGR01-T01",
+      "order": 2,
+      "title": "Distinguish missing graph from other load failures",
+      "source": "docs/NAMED_GRAPHS_REMEDIATION_PLAN.md#NGR01-T01",
+      "depends_on": [
+        "NGR00-T01"
+      ],
+      "verify": [
+        "go test ./internal/store/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "NGR01-T02",
+      "order": 3,
+      "title": "Restrict resume fallback to the three allowed cases",
+      "source": "docs/NAMED_GRAPHS_REMEDIATION_PLAN.md#NGR01-T02",
+      "depends_on": [
+        "NGR01-T01"
+      ],
+      "verify": [
+        "go test ./internal/cli/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "NGR02-T01",
+      "order": 4,
+      "title": "Lock the selection-integrity contract with end-to-end tests",
+      "source": "docs/NAMED_GRAPHS_REMEDIATION_PLAN.md#NGR02-T01",
+      "depends_on": [
+        "NGR01-T02"
+      ],
+      "verify": [
+        "go test ./..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "NGR03-T01",
+      "order": 5,
+      "title": "Complete the remediation through a separate named graph",
+      "source": "docs/NAMED_GRAPHS_REMEDIATION_PLAN.md#NGR03-T01",
+      "depends_on": [
+        "NGR02-T01"
+      ],
+      "verify": [
+        "gofmt -w cmd internal",
+        "go test ./...",
+        "go vet ./...",
+        "go build ./cmd/amnesia"
+      ],
+      "status": "done",
+      "blocker": null
+    }
+  ]
+}

@@ -811,6 +811,116 @@ func TestMigrationConflictThroughCLI(t *testing.T) {
 	}
 }
 
+func TestResumeCorruptedSelectedGraphMustNotFallback(t *testing.T) {
+	root := newGitRepo(t)
+	writeFile(t, root, "plan.md", "plan")
+	mk := func(title string) graph.Graph {
+		return graph.Graph{Version: graph.Version, Tasks: []graph.Task{{ID: "T001", Order: 1, Title: title, Source: "plan.md#t"}}}
+	}
+	if _, _, code := run(t, root, "init", "selected", writeInput(t, root, mk("Selected"))); code != 0 {
+		t.Fatal("init selected")
+	}
+	if _, _, code := run(t, root, "init", "other", writeInput(t, root, mk("Other"))); code != 0 {
+		t.Fatal("init other")
+	}
+	if _, _, code := run(t, root, "use", "selected"); code != 0 {
+		t.Fatal("use selected")
+	}
+	// Corrupt the selected graph while the other stays valid.
+	if err := os.WriteFile(store.GraphPath(root, "selected"), []byte(`{"version":1,"tasks":[`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := run(t, root, "resume")
+	if code == 0 {
+		t.Fatalf("corrupted selection silently recovered another plan: %q", stdout)
+	}
+	if strings.Contains(stdout, "GRAPH other") {
+		t.Fatalf("resume switched plans on corruption: %q", stdout)
+	}
+	current, err := store.Current(root)
+	if err != nil || current != "selected" {
+		t.Fatalf("current pointer moved on hard error: %q %v", current, err)
+	}
+	if stderr == "" {
+		t.Fatal("expected an actionable error on stderr")
+	}
+}
+
+func TestResumeInvalidCurrentNameMustNotFallback(t *testing.T) {
+	root := newGitRepo(t)
+	writeFile(t, root, "plan.md", "plan")
+	mk := graph.Graph{Version: graph.Version, Tasks: []graph.Task{{ID: "T001", Order: 1, Title: "T", Source: "plan.md#t"}}}
+	if _, _, code := run(t, root, "init", "ga", writeInput(t, root, mk)); code != 0 {
+		t.Fatal("init ga")
+	}
+	if _, _, code := run(t, root, "init", "gb", writeInput(t, root, mk)); code != 0 {
+		t.Fatal("init gb")
+	}
+	// Point selection at an invalid graph name with another valid graph present.
+	if err := os.WriteFile(store.CurrentPath(root), []byte("Bad Name\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := run(t, root, "resume")
+	if code == 0 {
+		t.Fatalf("invalid current silently recovered another plan: %q", stdout)
+	}
+	if strings.Contains(stdout, "GRAPH ga") || strings.Contains(stdout, "GRAPH gb") {
+		t.Fatalf("resume switched plans on invalid current: %q", stdout)
+	}
+	data, err := os.ReadFile(store.CurrentPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "Bad Name\n" {
+		t.Fatalf("current pointer moved on hard error: %q", data)
+	}
+	if stderr == "" {
+		t.Fatal("expected an actionable error on stderr")
+	}
+}
+
+func TestResumeInvalidSelectedStateMustNotFallback(t *testing.T) {
+	root := newGitRepo(t)
+	writeFile(t, root, "plan.md", "plan")
+	mk := graph.Graph{Version: graph.Version, Tasks: []graph.Task{{ID: "T001", Order: 1, Title: "T", Source: "plan.md#t"}}}
+	if _, _, code := run(t, root, "init", "selected", writeInput(t, root, mk)); code != 0 {
+		t.Fatal("init selected")
+	}
+	if _, _, code := run(t, root, "init", "other", writeInput(t, root, mk)); code != 0 {
+		t.Fatal("init other")
+	}
+	if _, _, code := run(t, root, "use", "selected"); code != 0 {
+		t.Fatal("use selected")
+	}
+	// Selected graph is readable JSON but fails installed-state validation:
+	// child done while its dependency is still pending.
+	invalid := graph.Graph{Version: graph.Version, Tasks: []graph.Task{
+		{ID: "P", Order: 1, Title: "Parent", Source: "plan.md#parent", DependsOn: []string{}, Verify: []string{}, Status: graph.Pending},
+		{ID: "C", Order: 2, Title: "Child", Source: "plan.md#child", DependsOn: []string{"P"}, Verify: []string{}, Status: graph.Done},
+	}}
+	data, err := json.MarshalIndent(invalid, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(store.GraphPath(root, "selected"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := run(t, root, "resume")
+	if code == 0 {
+		t.Fatalf("invalid selection silently recovered another plan: %q", stdout)
+	}
+	if !strings.Contains(stderr, "incomplete dependency") {
+		t.Fatalf("expected validation error, got stderr=%q stdout=%q", stderr, stdout)
+	}
+	if strings.Contains(stdout, "GRAPH other") {
+		t.Fatalf("resume switched plans on invalid state: %q", stdout)
+	}
+	current, err := store.Current(root)
+	if err != nil || current != "selected" {
+		t.Fatalf("current pointer moved on hard error: %q %v", current, err)
+	}
+}
+
 func run(t *testing.T, directory string, args ...string) (string, string, int) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer

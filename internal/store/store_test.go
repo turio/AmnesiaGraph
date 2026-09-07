@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -232,5 +233,39 @@ func TestMissingStateSignals(t *testing.T) {
 	}
 	if _, err := Load(root, "missing"); err == nil || !strings.Contains(err.Error(), "GRAPH_NOT_FOUND") {
 		t.Fatalf("expected GRAPH_NOT_FOUND, got %v", err)
+	}
+}
+
+func TestLoadDistinguishesMissingFromUnreadable(t *testing.T) {
+	root := t.TempDir()
+	if err := EnsureLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	// Absent target wraps the sentinel and keeps concise output.
+	_, err := Load(root, "absent")
+	if !errors.Is(err, ErrGraphNotFound) {
+		t.Fatalf("missing graph is not ErrGraphNotFound: %v", err)
+	}
+	if !strings.Contains(err.Error(), "GRAPH_NOT_FOUND absent") {
+		t.Fatalf("missing graph output changed: %v", err)
+	}
+	// Malformed JSON is a hard read error, not absence.
+	if err := os.WriteFile(GraphPath(root, "broken"), []byte(`{"version":1,"tasks":[`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err = Load(root, "broken")
+	if errors.Is(err, ErrGraphNotFound) {
+		t.Fatalf("malformed graph conflated with missing: %v", err)
+	}
+	if !strings.Contains(err.Error(), "INVALID_GRAPH") {
+		t.Fatalf("malformed graph error changed: %v", err)
+	}
+	// Invalid names never reach the filesystem check.
+	_, err = Load(root, "Bad Name")
+	if errors.Is(err, ErrGraphNotFound) {
+		t.Fatalf("invalid name conflated with missing: %v", err)
+	}
+	if !strings.Contains(err.Error(), "INVALID_GRAPH_NAME") {
+		t.Fatalf("invalid name error changed: %v", err)
 	}
 }

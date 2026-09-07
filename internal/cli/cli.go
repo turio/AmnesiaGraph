@@ -221,18 +221,28 @@ func resolveResume(root string) (string, graph.Graph, error) {
 	for _, info := range infos {
 		byName[info.Name] = info
 	}
-	if currentName, err := store.Current(root); err == nil {
-		if store.ValidateGraphName(currentName) == nil {
-			if current, loadErr := store.Load(root, currentName); loadErr == nil {
-				if validateErr := graph.Validate(current, root); validateErr == nil {
-					if !graph.IsComplete(current) {
-						return currentName, current, nil
-					}
-				} else {
-					// Corrupt selection should surface, not silently fall back.
-					return "", graph.Graph{}, validateErr
-				}
+	// Selection is explicit: only a missing pointer, a missing target, or a
+	// completed selection may fall through to the fallback scan. Any other
+	// failure in the selected context is a hard error and leaves `current`
+	// unchanged, so a corrupted plan can never silently switch context.
+	currentName, err := store.Current(root)
+	if err != nil {
+		if !errors.Is(err, store.ErrNoCurrent) {
+			return "", graph.Graph{}, err
+		}
+	} else {
+		if err := store.ValidateGraphName(currentName); err != nil {
+			return "", graph.Graph{}, err
+		}
+		current, loadErr := store.Load(root, currentName)
+		if loadErr != nil {
+			if !errors.Is(loadErr, store.ErrGraphNotFound) {
+				return "", graph.Graph{}, loadErr
 			}
+		} else if validateErr := graph.Validate(current, root); validateErr != nil {
+			return "", graph.Graph{}, validateErr
+		} else if !graph.IsComplete(current) {
+			return currentName, current, nil
 		}
 	}
 	type candidate struct {

@@ -37,6 +37,11 @@ var ErrMigrationConflict = errors.New("MIGRATION_CONFLICT")
 // ErrNoCurrent is returned when no graph has been selected yet.
 var ErrNoCurrent = errors.New("NO_CURRENT")
 
+// ErrGraphNotFound is wrapped by Load when the named graph file does not
+// exist, so callers can branch on absence with errors.Is without conflating
+// malformed or unreadable graphs with missing ones.
+var ErrGraphNotFound = errors.New("GRAPH_NOT_FOUND")
+
 // GraphInfo exposes only what selection requires: storage name and file
 // modification time. Completion stays a derived graph property.
 type GraphInfo struct {
@@ -112,7 +117,7 @@ func Load(root, name string) (graph.Graph, error) {
 	file, err := os.Open(GraphPath(root, name))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return graph.Graph{}, fmt.Errorf("GRAPH_NOT_FOUND %s", name)
+			return graph.Graph{}, fmt.Errorf("%w %s", ErrGraphNotFound, name)
 		}
 		return graph.Graph{}, fmt.Errorf("LOAD_FAILED %w", err)
 	}

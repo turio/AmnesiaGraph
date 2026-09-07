@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "MG00-T01",
+      "order": 1,
+      "title": "Bootstrap this plan under the current single-graph implementation",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG00-T01",
+      "depends_on": [],
+      "verify": [
+        "go test ./...",
+        "go vet ./...",
+        "go build ./cmd/amnesia"
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG01-T01",
+      "order": 2,
+      "title": "Implement named graph paths, names, and current pointer",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG01-T01",
+      "depends_on": [
+        "MG00-T01"
+      ],
+      "verify": [
+        "go test ./internal/store/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG01-T02",
+      "order": 3,
+      "title": "Add one-case legacy storage migration",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG01-T02",
+      "depends_on": [
+        "MG01-T01"
+      ],
+      "verify": [
+        "go test ./internal/store/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG02-T01",
+      "order": 4,
+      "title": "Add graph completion predicate and current-scoped loading",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG02-T01",
+      "depends_on": [
+        "MG01-T02"
+      ],
+      "verify": [
+        "go test ./internal/graph/... ./internal/cli/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG02-T02",
+      "order": 5,
+      "title": "Implement list and use",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG02-T02",
+      "depends_on": [
+        "MG02-T01"
+      ],
+      "verify": [
+        "go test ./internal/store/... ./internal/cli/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG02-T03",
+      "order": 6,
+      "title": "Implement default resume fallback",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG02-T03",
+      "depends_on": [
+        "MG02-T02"
+      ],
+      "verify": [
+        "go test ./internal/cli/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG03-T01",
+      "order": 7,
+      "title": "Make init create a named graph and select it",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG03-T01",
+      "depends_on": [
+        "MG02-T01"
+      ],
+      "verify": [
+        "go test ./internal/cli/...",
+        "go build ./cmd/amnesia"
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG03-T02",
+      "order": 8,
+      "title": "Route validate/ready/start/block/done through current graph only",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG03-T02",
+      "depends_on": [
+        "MG03-T01"
+      ],
+      "verify": [
+        "go test ./internal/cli/... ./internal/graph/... ./internal/verify/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG04-T01",
+      "order": 9,
+      "title": "Add storage and fallback regression coverage",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG04-T01",
+      "depends_on": [
+        "MG02-T03",
+        "MG03-T02"
+      ],
+      "verify": [
+        "go test ./internal/store/... ./internal/cli/..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG04-T02",
+      "order": 10,
+      "title": "Add the interrupted Plan A / Plan B acceptance test",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG04-T02",
+      "depends_on": [
+        "MG04-T01"
+      ],
+      "verify": [
+        "go test ./..."
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG05-T01",
+      "order": 11,
+      "title": "Update README, skill, examples, and AGENTS.md",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG05-T01",
+      "depends_on": [
+        "MG04-T02"
+      ],
+      "verify": [
+        "go test ./...",
+        "go vet ./...",
+        "go build ./cmd/amnesia"
+      ],
+      "status": "done",
+      "blocker": null
+    },
+    {
+      "id": "MG06-T01",
+      "order": 12,
+      "title": "Prove migration and multi-plan recovery on the finished implementation",
+      "source": "docs/NAMED_GRAPHS_IMPLEMENTATION_PLAN.md#MG06-T01",
+      "depends_on": [
+        "MG05-T01"
+      ],
+      "verify": [
+        "gofmt -w cmd internal",
+        "go test ./...",
+        "go vet ./...",
+        "go build ./cmd/amnesia"
+      ],
+      "status": "done",
+      "blocker": null
+    }
+  ]
+}

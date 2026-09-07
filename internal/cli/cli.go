@@ -15,7 +15,7 @@ import (
 	"github.com/turio/AmnesiaGraph/internal/verify"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 // Run dispatches the CLI using the process's current working directory.
 func Run(args []string, out, errOut io.Writer) int {
@@ -51,10 +51,20 @@ func RunInDir(args []string, cwd string, out, errOut io.Writer) int {
 
 	switch args[0] {
 	case "init":
-		if len(args) != 2 {
-			return usageError(errOut, "amnesia init <normalized-graph.json>")
+		if len(args) != 3 {
+			return usageError(errOut, "amnesia init <name> <normalized-graph.json>")
 		}
-		return initGraph(root, cwd, args[1], out, errOut)
+		return initGraph(root, cwd, args[1], args[2], out, errOut)
+	case "list":
+		if len(args) != 1 {
+			return usageError(errOut, "amnesia list")
+		}
+		return listGraphs(root, out, errOut)
+	case "use":
+		if len(args) != 2 {
+			return usageError(errOut, "amnesia use <name>")
+		}
+		return useGraph(root, args[1], out, errOut)
 	case "validate":
 		if len(args) != 1 {
 			return usageError(errOut, "amnesia validate")
@@ -82,10 +92,11 @@ func RunInDir(args []string, cwd string, out, errOut io.Writer) int {
 		if len(args) != 1 {
 			return usageError(errOut, "amnesia resume")
 		}
-		current, err := loadValidated(root)
+		name, current, err := resolveResume(root)
 		if err != nil {
 			return printError(errOut, err)
 		}
+		fmt.Fprintf(out, "GRAPH %s\n", name)
 		printResume(out, graph.HotSubgraph(current))
 		return 0
 	case "start":
@@ -108,7 +119,13 @@ func RunInDir(args []string, cwd string, out, errOut io.Writer) int {
 	}
 }
 
-func initGraph(root, cwd, inputPath string, out, errOut io.Writer) int {
+func initGraph(root, cwd, name, inputPath string, out, errOut io.Writer) int {
+	if err := store.ValidateGraphName(name); err != nil {
+		return printError(errOut, err)
+	}
+	if err := store.MigrateLegacyIfNeeded(root); err != nil {
+		return printError(errOut, err)
+	}
 	if !filepath.IsAbs(inputPath) {
 		inputPath = filepath.Join(cwd, inputPath)
 	}
@@ -137,33 +154,258 @@ func initGraph(root, cwd, inputPath string, out, errOut io.Writer) int {
 	if err := graph.ValidateForInit(current, root); err != nil {
 		return printError(errOut, err)
 	}
-	if err := store.Save(root, current); err != nil {
+	if store.Exists(root, name) {
+		return printError(errOut, fmt.Errorf("GRAPH_EXISTS %s", name))
+	}
+	if err := store.Save(root, name, current); err != nil {
 		return printError(errOut, err)
 	}
-	fmt.Fprintln(out, "INITIALIZED .amnesiagraph/graph.json")
+	if err := store.SetCurrent(root, name); err != nil {
+		return printError(errOut, err)
+	}
+	fmt.Fprintf(out, "INITIALIZED %s\n", name)
 	return 0
 }
 
-func loadValidated(root string) (graph.Graph, error) {
-	current, err := store.Load(root)
+// loadCurrentValidated runs migration, then loads only the selected graph.
+func loadCurrentValidated(root string) (string, graph.Graph, error) {
+	if err := store.MigrateLegacyIfNeeded(root); err != nil {
+		return "", graph.Graph{}, err
+	}
+	name, err := store.Current(root)
 	if err != nil {
-		return graph.Graph{}, err
+		if errors.Is(err, store.ErrNoCurrent) {
+			infos, listErr := store.List(root)
+			if listErr != nil {
+				return "", graph.Graph{}, listErr
+			}
+			if len(infos) == 0 {
+				return "", graph.Graph{}, store.ErrNotInitialized
+			}
+			return "", graph.Graph{}, fmt.Errorf("NO_CURRENT run 'amnesia resume' or 'amnesia use <name>'")
+		}
+		return "", graph.Graph{}, err
+	}
+	if err := store.ValidateGraphName(name); err != nil {
+		return "", graph.Graph{}, err
+	}
+	current, err := store.Load(root, name)
+	if err != nil {
+		return "", graph.Graph{}, err
 	}
 	if err := graph.Validate(current, root); err != nil {
-		return graph.Graph{}, err
+		return "", graph.Graph{}, err
 	}
-	return current, nil
+	return name, current, nil
+}
+
+func loadValidated(root string) (graph.Graph, error) {
+	_, current, err := loadCurrentValidated(root)
+	return current, err
+}
+
+// resolveResume implements plain-resume selection: current unfinished first,
+// otherwise newest unfinished by mtime with name tie-breaker, persisted.
+func resolveResume(root string) (string, graph.Graph, error) {
+	if err := store.MigrateLegacyIfNeeded(root); err != nil {
+		return "", graph.Graph{}, err
+	}
+	infos, err := store.List(root)
+	if err != nil {
+		return "", graph.Graph{}, err
+	}
+	if len(infos) == 0 {
+		return "", graph.Graph{}, store.ErrNotInitialized
+	}
+	byName := make(map[string]store.GraphInfo, len(infos))
+	for _, info := range infos {
+		byName[info.Name] = info
+	}
+	if currentName, err := store.Current(root); err == nil {
+		if store.ValidateGraphName(currentName) == nil {
+			if current, loadErr := store.Load(root, currentName); loadErr == nil {
+				if validateErr := graph.Validate(current, root); validateErr == nil {
+					if !graph.IsComplete(current) {
+						return currentName, current, nil
+					}
+				} else {
+					// Corrupt selection should surface, not silently fall back.
+					return "", graph.Graph{}, validateErr
+				}
+			}
+		}
+	}
+	type candidate struct {
+		name    string
+		current graph.Graph
+		modTime int64
+		nano    int
+	}
+	candidates := make([]candidate, 0, len(infos))
+	var firstValidComplete bool
+	var firstErr error
+	for _, info := range infos {
+		loaded, loadErr := store.Load(root, info.Name)
+		if loadErr != nil {
+			if firstErr == nil {
+				firstErr = loadErr
+			}
+			continue
+		}
+		if validateErr := graph.Validate(loaded, root); validateErr != nil {
+			if firstErr == nil {
+				firstErr = validateErr
+			}
+			continue
+		}
+		if graph.IsComplete(loaded) {
+			firstValidComplete = true
+			continue
+		}
+		candidates = append(candidates, candidate{
+			name:    info.Name,
+			current: loaded,
+			modTime: info.ModTime.Unix(),
+			nano:    info.ModTime.Nanosecond(),
+		})
+	}
+	if len(candidates) == 0 {
+		if firstValidComplete {
+			return "", graph.Graph{}, fmt.Errorf("NO_ACTIVE_GRAPH")
+		}
+		if firstErr != nil {
+			return "", graph.Graph{}, firstErr
+		}
+		return "", graph.Graph{}, fmt.Errorf("NO_ACTIVE_GRAPH")
+	}
+	best := candidates[0]
+	bestMod := byName[best.name].ModTime
+	for _, c := range candidates[1:] {
+		mod := byName[c.name].ModTime
+		if mod.After(bestMod) || (mod.Equal(bestMod) && c.name < best.name) {
+			best = c
+			bestMod = mod
+		}
+	}
+	// Tie-breaker when mtimes equal is lexical ascending (deterministic).
+	if err := store.SetCurrent(root, best.name); err != nil {
+		return "", graph.Graph{}, err
+	}
+	return best.name, best.current, nil
+}
+
+func listGraphs(root string, out, errOut io.Writer) int {
+	if err := store.MigrateLegacyIfNeeded(root); err != nil {
+		return printError(errOut, err)
+	}
+	infos, err := store.List(root)
+	if err != nil {
+		return printError(errOut, err)
+	}
+	if len(infos) == 0 {
+		return printError(errOut, store.ErrNotInitialized)
+	}
+	currentName, _ := store.Current(root)
+	byName := make(map[string]store.GraphInfo, len(infos))
+	for _, info := range infos {
+		byName[info.Name] = info
+	}
+	ordered := append([]store.GraphInfo(nil), infos...)
+	hasCurrent := false
+	for _, info := range infos {
+		if info.Name == currentName {
+			hasCurrent = true
+			break
+		}
+	}
+	if hasCurrent {
+		rest := make([]store.GraphInfo, 0, len(ordered))
+		var first store.GraphInfo
+		for _, info := range ordered {
+			if info.Name == currentName {
+				first = info
+			} else {
+				rest = append(rest, info)
+			}
+		}
+		sortGraphInfos(rest)
+		ordered = append([]store.GraphInfo{first}, rest...)
+	} else {
+		sortGraphInfos(ordered)
+	}
+	for _, info := range ordered {
+		status := "unfinished"
+		if loaded, loadErr := store.Load(root, info.Name); loadErr == nil {
+			if validateErr := graph.Validate(loaded, root); validateErr == nil {
+				if graph.IsComplete(loaded) {
+					status = "complete"
+				}
+			} else {
+				status = "invalid"
+			}
+		} else {
+			status = "invalid"
+		}
+		marker := " "
+		if info.Name == currentName && hasCurrent {
+			marker = "*"
+		}
+		fmt.Fprintf(out, "%s %s  %s\n", marker, info.Name, status)
+	}
+	return 0
+}
+
+func sortGraphInfos(infos []store.GraphInfo) {
+	for i := 1; i < len(infos); i++ {
+		for j := i; j > 0; j-- {
+			a, b := infos[j-1], infos[j]
+			swap := false
+			if b.ModTime.After(a.ModTime) {
+				swap = true
+			} else if b.ModTime.Equal(a.ModTime) && b.Name < a.Name {
+				swap = true
+			}
+			if !swap {
+				break
+			}
+			infos[j-1], infos[j] = infos[j], infos[j-1]
+		}
+	}
+}
+
+func useGraph(root, name string, out, errOut io.Writer) int {
+	if err := store.ValidateGraphName(name); err != nil {
+		return printError(errOut, err)
+	}
+	if err := store.MigrateLegacyIfNeeded(root); err != nil {
+		return printError(errOut, err)
+	}
+	current, err := store.Load(root, name)
+	if err != nil {
+		return printError(errOut, err)
+	}
+	if err := graph.Validate(current, root); err != nil {
+		return printError(errOut, err)
+	}
+	if graph.IsComplete(current) {
+		return printError(errOut, fmt.Errorf("GRAPH_COMPLETE %s", name))
+	}
+	if err := store.SetCurrent(root, name); err != nil {
+		return printError(errOut, err)
+	}
+	fmt.Fprintf(out, "CURRENT %s\n", name)
+	return 0
 }
 
 func startTask(root, id string, out, errOut io.Writer) int {
-	current, err := loadValidated(root)
+	name, current, err := loadCurrentValidated(root)
 	if err != nil {
 		return printError(errOut, err)
 	}
 	if err := graph.Start(&current, id); err != nil {
 		return printError(errOut, err)
 	}
-	if err := store.Save(root, current); err != nil {
+	if err := store.Save(root, name, current); err != nil {
 		return printError(errOut, err)
 	}
 	fmt.Fprintf(out, "START %s\n", id)
@@ -171,14 +413,14 @@ func startTask(root, id string, out, errOut io.Writer) int {
 }
 
 func blockTask(root, id, reason string, out, errOut io.Writer) int {
-	current, err := loadValidated(root)
+	name, current, err := loadCurrentValidated(root)
 	if err != nil {
 		return printError(errOut, err)
 	}
 	if err := graph.Block(&current, id, reason); err != nil {
 		return printError(errOut, err)
 	}
-	if err := store.Save(root, current); err != nil {
+	if err := store.Save(root, name, current); err != nil {
 		return printError(errOut, err)
 	}
 	fmt.Fprintf(out, "BLOCK %s\n", id)
@@ -186,7 +428,7 @@ func blockTask(root, id, reason string, out, errOut io.Writer) int {
 }
 
 func doneTask(root, id string, out, errOut io.Writer) int {
-	current, err := loadValidated(root)
+	name, current, err := loadCurrentValidated(root)
 	if err != nil {
 		return printError(errOut, err)
 	}
@@ -208,7 +450,7 @@ func doneTask(root, id string, out, errOut io.Writer) int {
 	if err := graph.MarkDone(&current, id); err != nil {
 		return printError(errOut, err)
 	}
-	if err := store.Save(root, current); err != nil {
+	if err := store.Save(root, name, current); err != nil {
 		return printError(errOut, err)
 	}
 	fmt.Fprintf(out, "DONE %s\n", id)
@@ -291,14 +533,16 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "usage: amnesia <command>")
 	fmt.Fprintln(out, "")
 	fmt.Fprintln(out, "commands:")
-	fmt.Fprintln(out, "  init <normalized-graph.json>  install graph state")
-	fmt.Fprintln(out, "  validate                     validate installed state")
-	fmt.Fprintln(out, "  resume                       show the hot execution neighborhood")
-	fmt.Fprintln(out, "  ready                        list dependency-ready tasks")
-	fmt.Fprintln(out, "  start <id>                   begin a ready task")
-	fmt.Fprintln(out, "  block <id> <reason>          block an active task")
-	fmt.Fprintln(out, "  done <id>                    verify and complete an active task")
-	fmt.Fprintln(out, "  version                      print the CLI version")
+	fmt.Fprintln(out, "  init <name> <normalized-graph.json>  install a named graph and select it")
+	fmt.Fprintln(out, "  list                                 list named graphs")
+	fmt.Fprintln(out, "  use <name>                           select an unfinished named graph")
+	fmt.Fprintln(out, "  validate                             validate the selected graph")
+	fmt.Fprintln(out, "  resume                               show the hot execution neighborhood")
+	fmt.Fprintln(out, "  ready                                list dependency-ready tasks")
+	fmt.Fprintln(out, "  start <id>                           begin a ready task")
+	fmt.Fprintln(out, "  block <id> <reason>                  block an active task")
+	fmt.Fprintln(out, "  done <id>                            verify and complete an active task")
+	fmt.Fprintln(out, "  version                              print the CLI version")
 }
 
 func usageError(errOut io.Writer, message string) int {

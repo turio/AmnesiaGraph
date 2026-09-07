@@ -36,15 +36,17 @@ AmnesiaGraph requires a real implementation plan with discrete executable tasks.
 
 | Command | Purpose |
 |---|---|
-| `amnesia init <normalized-graph.json>` | Validate and install normalized execution state |
-| `amnesia validate` | Validate the installed graph |
-| `amnesia resume` | Show the compact active/ready/blocked execution neighborhood |
+| `amnesia init <name> <normalized-graph.json>` | Validate, install, and select a named graph |
+| `amnesia list` | List named graphs, marking the selected one |
+| `amnesia use <name>` | Select an existing unfinished graph |
+| `amnesia validate` | Validate the selected graph |
+| `amnesia resume` | Show the compact active/ready/blocked neighborhood for the selected graph |
 | `amnesia ready` | List pending tasks whose dependencies are done |
 | `amnesia start <id>` | Start a dependency-ready task |
 | `amnesia block <id> <reason>` | Block an active task with a short reason |
 | `amnesia done <id>` | Run declared verification and complete an active task |
 
-All state is stored only at `.amnesiagraph/graph.json` under the current Git repository root. Commands never fall back to a home-directory file or another repository. `resume` shows source pointers labeled as the location of the full original plan instructions; it does not print the plan body.
+All state is stored only under `.amnesiagraph/` in the current Git repository root: one file per graph at `.amnesiagraph/graphs/<name>.json` plus a `current` pointer naming the selected graph. Commands never fall back to a home-directory file or another repository. `resume` shows source pointers labeled as the location of the full original plan instructions; it does not print the plan body.
 
 ## Minimal workflow
 
@@ -77,7 +79,7 @@ Create a normalized input such as:
 Then run from the repository:
 
 ```text
-amnesia init normalized-graph.json
+amnesia init plan-a normalized-graph.json
 amnesia resume
 amnesia ready
 amnesia start T001
@@ -85,6 +87,28 @@ amnesia done T001
 amnesia start T002
 amnesia done T002
 ```
+
+### Multiple plans in one repo
+
+Keep unrelated plans in separate named graphs; never merge them into one graph merely because they share a repository. Choose a short lowercase name such as `auth-refresh` or `renderer-v2` and initialize each plan on its own:
+
+```text
+amnesia init plan-a plan-a.json
+amnesia start A-T001
+amnesia done A-T001
+amnesia start A-T002
+amnesia init plan-b plan-b.json
+amnesia resume
+```
+
+Initializing `plan-b` selects it automatically without touching `plan-a`: `A-T002` stays active in its own graph. Return later with:
+
+```text
+amnesia use plan-a
+amnesia resume
+```
+
+Plain `amnesia resume` prefers the selected (`current`) graph while it is unfinished. If `current` is missing, points at a missing graph, or points at a completed graph, `resume` falls back to the most recently modified unfinished graph and persists that choice. Use `amnesia list` only when the graph identity is unclear.
 
 Use the generic procedure in [`skills/amnesiagraph/SKILL.md`](skills/amnesiagraph/SKILL.md) with any shell-capable coding agent. The examples under [`skills/amnesiagraph/examples/`](skills/amnesiagraph/examples/) show custom, ID-less, multi-source, Spec Kit-style, and OpenSpec-style normalization inputs; they are examples, not dedicated adapters.
 

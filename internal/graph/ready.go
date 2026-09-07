@@ -16,6 +16,17 @@ func ReadyTasks(g Graph) []Task {
 	return ready
 }
 
+// IsComplete reports whether every task in g is done. It is the selection
+// predicate for named graphs: unfinished means at least one task is not done.
+func IsComplete(g Graph) bool {
+	for _, task := range g.Tasks {
+		if task.Status != Done {
+			return false
+		}
+	}
+	return true
+}
+
 // DependenciesFor returns the immediate dependencies of taskID in graph
 // order. The graph must already have passed structural validation.
 func DependenciesFor(g Graph, taskID string) []Task {

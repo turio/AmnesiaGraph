@@ -14,7 +14,9 @@ Use AmnesiaGraph only underneath an existing, proper implementation plan. The pl
 3. Decompose coarse planned work into numbered executable steps when it is not yet trackable.
 4. Convert ordering into explicit `depends_on` IDs and keep source order in `order`.
 5. Store only short titles, dependencies, repo-relative `source` pointers, and clearly defined executable `verify` commands. Keep the full instructions in the original plan.
-6. Install the normalized input with `amnesia init <normalized-graph.json>` from the repository.
+6. Normalize each independent implementation plan into its own named graph; do not merge unrelated plans merely because they live in one repo.
+7. Choose a short deterministic lowercase graph name such as `auth`, `renderer-v2`, or `spec-2026.09` (`^[a-z0-9][a-z0-9._-]*$`).
+8. Install the normalized input with `amnesia init <name> <normalized-graph.json>` from the repository.
 
 Example input (initial status fields are added by `init`):
 
@@ -44,7 +46,9 @@ Example input (initial status fields are added by `init`):
 
 ## Continue or recover work
 
-Run `amnesia resume` at the beginning of work, after context loss, after handoff, or whenever execution state is uncertain. Read the complete original-plan instructions at each active task's `source` pointer. Use `amnesia ready` for dependency-gated work instead of reconstructing readiness from memory.
+Run plain `amnesia resume` at the beginning of work, after context loss, after handoff, or whenever execution state is uncertain. It resumes the selected graph while unfinished, otherwise falls back to the most recently modified unfinished graph. Follow the `GRAPH <name>` line plus each active task's `source` pointer to read the complete original-plan instructions. Use `amnesia ready` for dependency-gated work instead of reconstructing readiness from memory.
+
+Use `amnesia list` only when the graph identity is unclear, and `amnesia use <name>` to return to another unfinished plan. After selection, `validate`, `ready`, `start`, `block`, and `done` apply only to that graph; identical task IDs in another graph are never touched.
 
 When beginning a task, run `amnesia start <id>`. If an active task cannot progress, run `amnesia block <id> <short reason>`. After implementation is complete, run `amnesia done <id>`; defined verification commands must pass before the CLI records `done`.
 

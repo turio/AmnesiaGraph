@@ -4,11 +4,12 @@ AmnesiaGraph is a small standard-library Go CLI for repo-local execution state. 
 
 ## Recover work
 
-- State belongs only in `.amnesiagraph/graph.json` under this Git repository.
-- If that file exists, begin or recover with `go run ./cmd/amnesia resume`.
+- State lives only under `.amnesiagraph/` in this Git repository (named graphs plus a `current` pointer). Do not inspect that directory manually to choose work.
+- Begin or recover with `go run ./cmd/amnesia resume`.
+- Follow the `GRAPH` line plus the `READ` source pointer(s) printed by `resume` for full instructions. Do not reread an entire plan to reconstruct execution state.
 - Use the ready/dependency state printed by `resume`; start work with `go run ./cmd/amnesia start <id>` and complete it with `go run ./cmd/amnesia done <id>`.
-- For an active task, read the full instructions only from the `READ` source pointer printed by `resume`. Do not reread an entire plan to reconstruct execution state.
-- If state is not initialized, use the approved implementation or remediation plan and its normalized graph input; do not invent a parallel backlog.
+- Use `go run ./cmd/amnesia list` only when the graph identity is unclear, and `go run ./cmd/amnesia use <name>` to return to another unfinished plan.
+- If state is not initialized, use the approved implementation or remediation plan and its normalized graph input with `go run ./cmd/amnesia init <name> <file>`; do not invent a parallel backlog.
 
 ## Invariants
 

@@ -48,6 +48,8 @@ AmnesiaGraph requires a real implementation plan with discrete executable tasks.
 
 All state is stored only under `.amnesiagraph/` in the current Git repository root: one file per graph at `.amnesiagraph/graphs/<name>.json` plus a `current` pointer naming the selected graph. Commands never fall back to a home-directory file or another repository. `resume` shows source pointers labeled as the location of the full original plan instructions; it does not print the plan body.
 
+**Security:** task `verify` entries are executed as shell commands from the repository root (`/bin/sh -c` on Unix-like systems and `cmd.exe /C` on Windows). Only initialize and run graphs whose plans and verification commands you trust.
+
 ## Minimal workflow
 
 Create a normalized input such as:

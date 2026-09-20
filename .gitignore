@@ -2,3 +2,16 @@
 /amnesia
 /amnesia.exe
 /bin/
+
+# Local environment files.
+.env
+.env.*
+!.env.example
+
+# OS and editor artifacts.
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

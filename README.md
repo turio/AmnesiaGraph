@@ -1,8 +1,10 @@
 # AmnesiaGraph
 
-**A durable execution context graph for coding agents.**
+**A durable execution context graph that let's coding agents work for hours without forgetting**
 
-Coding agents can lose track of execution state when context is compacted, a session ends, or work is handed off. AmnesiaGraph keeps the minimum useful state outside the model context so the agent can resume correctly without rereading an entire implementation plan.
+Coding agents can lose track of execution state when context is compacted, a session ends, or work is handed off. AmnesiaGraph keeps the minimum useful state outside the model context so the agent can resume correctly without rereading codebase and wasting tokens.
+
+As a result, AmnesiaGraph cuts down overall token use, and improves capbility of low end models like Luna and Qwen
 
 It stores a small repo-local graph of:
 

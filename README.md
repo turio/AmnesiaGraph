@@ -2,6 +2,8 @@
 
 **AmnesiaGraph prevents coding agents from losing execution state so they can keep working reliably through 10+ hour implementation runs.**
 
+<video src="https://github.com/user-attachments/assets/a93588a7-1895-4a1a-8490-fb42f423b636" autoplay loop muted playsinline width="100%"></video>
+
 Long coding jobs can outlive a model's useful context. Context gets compacted, sessions restart, and agents lose track of what is done, what is active, what is blocked, and what should happen next.
 
 AmnesiaGraph keeps that execution state outside the model context in a small repo-local graph.
